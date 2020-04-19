@@ -1,77 +1,56 @@
-# Import libraries
+# Import libraries ---------------------------------------
 
 import time, datetime, socket, hashlib
-from bs4 import BeautifulSoup
-import utils as scrape_utils
-import requests
-import urllib
+import functions as fun
 import pandas as pd
 
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+# Inputs  ----------------------------------------------
 
-colnames = ["id", "url"]
-df = pd.DataFrame(columns = colnames)
-
-
-driver = scrape_utils.get_driver()
-
-
+# List of all ag projects in the operations portal
 projects = pd.read_csv("data/ag-projects-codes.csv") 
+
+# xpath to the table in the project's page that contains the link to PAD
+xpath_table = '/html/body/div[1]/div[3]/div/div/div[1]/div[1]/div/div[2]/div/div/div/div[2]/div[3]/div[1]/div[5]/div/div[4]/table'
+
+# xpath to the link to txt version of PAD in the PAD document page
+xpath_txt = '/html/body/form/div[6]/div/div/div/div/span/div[1]/div/div/div[1]/div[1]/div/div[1]/div/div[1]/div[4]/div/div[1]/div[1]/div/div[1]/div/p[1]/a[3]'
+
+# Initial settings ------------------------------------
+
+# Open browser window
+driver = fun.get_driver()
+
+# Turn list of projects into a list
 projects_list = projects['id'].to_list()
 projects_list = projects_list[0:5]
 
+# Create a blank data frame to append data for each project
+df = pd.DataFrame(columns = ["id", "url"])
 
+project = 'P169758'
+
+
+# Now loop over projects and save the link to the PAD in txt format
 for project in projects_list :
 
-    site = "http://operationsportal.worldbank.org/secure/" + project + "/home?tab=documents#IB"
-    print(site)
-
+    # Project's page on the intranet
+    url_project = "http://operationsportal.worldbank.org/secure/" + project + "/home?tab=documents#IB"
+    
     # Get project 'Key Documents' page in operations portal
-    driver.get(site)
-    timeout = 3
-    try:
-        element_present = EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[3]/div/div/div[1]/div[1]/div/div[2]/div/div/div/div[2]/div[3]/div[1]/div[5]/div/div[4]/table'))
-        WebDriverWait(driver, timeout).until(element_present)
-        print("Page is ready!")
-    except TimeoutException:
-        print("Timed out waiting for page to load")
-
-    html_keydocs = driver.page_source
+    html_keydocs = fun.page_html(driver, url_project, xpath_table)
 
     # Extract link to PAD from 'Key Documents'page HTML
-    soup = BeautifulSoup(html_keydocs, "html.parser")
-    docs_table = soup.find("table", attrs={"id": "WB-docs-table"})
-    table_row = docs_table.find('td', text = "Project Appraisal Document")
-    link = table_row.findPrevious("a")
-    url_pad = link.get('href')
+    url_pad = fun.pad_link(html_keydocs)
 
-    # Get PAD page HTML
-    driver.get(url_pad)
-    timeout = 5
-    try:
-        element_present = EC.presence_of_element_located((By.XPATH, '/html/body/form/div[6]/div/div/div/div/span/div[1]/div/div/div[1]/div[1]/div/div[1]/div/div[1]/div[4]/div/div[1]/div[1]/div/div[1]/div/p[1]/a[3]'))
-        WebDriverWait(driver, timeout).until(element_present)
-        print("Page is ready!")
-    except TimeoutException:
-        print("Timed out waiting for page to load")
-
-    html_pad = driver.page_source
+    # Check that link is valid (i.e., PAD is available)
+    html_pad = fun.page_html(driver, url_pad, xpath_txt)
 
     # Extract link to PAD from 'Key Documents'page HTML
-    soup = BeautifulSoup(html_pad, "html.parser")
-    txt_link = soup.find(id = "lnkTxtFile")
-    txt_url = txt_link.get('href')
+    url_txt = fun.txt_link(html_pad)
 
-    # Return the url
-    print(txt_url)
+    # Create new row to the data frame with the information collected
+    result_row = fun.df_row(project, url_txt)
 
-    result = {"id": project, "url": txt_url}
-    result_df = pd.DataFrame.from_dict(result, orient = "index")
-    result_row = result_df.T
-
+    # Append row to data frame
     df = df.append(result_row)
 
