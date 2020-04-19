@@ -39,7 +39,8 @@ def page_html(driver, url, xpath):
         WebDriverWait(driver, timeout).until(element_present)
         print("Page is ready!")
     except TimeoutException:
-        print("Timed out waiting for page to load")
+        print("Page does not contain xpath element")
+        return "stop"
 
     return driver.page_source
 
@@ -48,8 +49,12 @@ def pad_link(html):
     soup = BeautifulSoup(html, "html.parser")
     docs_table = soup.find("table", attrs={"id": "WB-docs-table"})
     table_row = docs_table.find('td', text = "Project Appraisal Document")
-    link = table_row.findPrevious("a")
     
+    if table_row is None:
+        print("PAD is not listed as one of project's documents")
+        return "stop"
+    else:
+    link = table_row.findPrevious("a")
     return link.get('href')
 
 
