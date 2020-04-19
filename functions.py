@@ -33,13 +33,11 @@ def get_driver():
 def page_html(driver, url, xpath):
 
     driver.get(url)
-    timeout = 3
+    timeout = 40
     try:
         element_present = EC.presence_of_element_located((By.XPATH, xpath))
         WebDriverWait(driver, timeout).until(element_present)
-        print("Page is ready!")
     except TimeoutException:
-        print("Page does not contain xpath element")
         return "stop"
 
     return driver.page_source
@@ -51,11 +49,10 @@ def pad_link(html):
     table_row = docs_table.find('td', text = "Project Appraisal Document")
     
     if table_row is None:
-        print("PAD is not listed as one of project's documents")
         return "stop"
     else:
-    link = table_row.findPrevious("a")
-    return link.get('href')
+        link = table_row.findPrevious("a")
+        return link.get('href')
 
 
 def txt_link(html):

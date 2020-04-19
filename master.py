@@ -22,7 +22,6 @@ driver = fun.get_driver()
 
 # Turn list of projects into a list
 projects_list = projects['id'].to_list()
-projects_list = projects_list[0:10]
 
 # Create a blank data frame to append data for each project
 df = pd.DataFrame(columns = ["id", "url"])
@@ -38,27 +37,35 @@ for project in projects_list :
 
     # If there is are any files in key documents, go ahead
     if html_keydocs != 'stop':
-
+        print(project + ": HTML extracted for key docs")
         # Extract link to PAD from 'Key Documents'page HTML
         url_pad = fun.pad_link(html_keydocs)
 
         # Check that link is valid (i.e., PAD is available)
         if url_pad == 'stop':
             # Create new row to the data frame saying there's no PAD
-            result_row = fun.df_row(project, 'not found')
+            result_row = fun.df_row(project, 'PAD not found in key documents')
         else:
+            print(project + ": PAD link found")
+
             # Get PAD page for project
             html_pad = fun.page_html(driver, url_pad, xpath_txt)
 
-            # Extract link to PAD from 'Key Documents'page HTML
-            url_txt = fun.txt_link(html_pad)
+            if html_pad != 'stop':
+                print(project + ": HTML extracted for PAD page")
 
-            # Create new row to the data frame with the information collected
-            result_row = fun.df_row(project, url_txt)
+                # Extract link to PAD from 'Key Documents'page HTML
+                url_txt = fun.txt_link(html_pad)
+
+                # Create new row to the data frame with the information collected
+                result_row = fun.df_row(project, url_txt)
+            else:
+                # Create new row to the data frame saying there's no PAD
+                result_row = fun.df_row(project, 'PAD txt not found')
     else:
-        # Create new row to the data frame saying there's no PAD
-        result_row = fun.df_row(project, 'not found')
+        result_row = fun.df_row(project, 'no key docs found')
 
     # Append row to data frame
     df = df.append(result_row)
 
+df.to_csv ('ag-projects-pad-links', index = False, header = True)
