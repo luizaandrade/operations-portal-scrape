@@ -1,7 +1,5 @@
 import os, time, shutil, json, random,re
 
-from selenium import webdriver
-from selenium.common.exceptions import ElementClickInterceptedException, NoSuchElementException
 from bs4 import BeautifulSoup
 import pandas as pd
 
@@ -9,7 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException
 
 #Set up the selenium driver
 def get_driver():
@@ -30,17 +28,17 @@ def get_driver():
 
 # Get project 'Key Documents' page in operations portal
 
-def page_html(driver, url, xpath):
+def test_page(driver, url, xpath, timeout):
 
     driver.get(url)
-    timeout = 40
+    
     try:
         element_present = EC.presence_of_element_located((By.XPATH, xpath))
         WebDriverWait(driver, timeout).until(element_present)
     except TimeoutException:
-        return "stop"
+        return False
 
-    return driver.page_source
+    return True
 
 def pad_link(html):
 

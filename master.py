@@ -68,4 +68,7 @@ for project in projects_list :
     # Append row to data frame
     df = df.append(result_row)
 
-df.to_csv ('ag-projects-pad-links', index = False, header = True)
+driver.close()
+df.to_csv ('data/ag-projects-pad-links.csv', index = False, header = True)
+
+
