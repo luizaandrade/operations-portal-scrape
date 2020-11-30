@@ -7,7 +7,7 @@ The code is divided in three components:
 
 ### Scraping
 This part of the code uses Python, since it requires scraping dynamic websites. We start from a list of agriculture-related projects extracted from the WB 
-operations portal, and extract the Project Appraisal Document from the World Bank documents repository. To run this code, access to the World Bank intranet is required.
+operations portal, and extract the Project Appraisal Document from the World Bank documents repository. To run this code, access to the World Bank intranet is required. The custom functions used for this code are defined in `code/functions.py`
 - Input: `data/ag-projects-codes.csv`, adapted from the file downloaded from the WB Operations Portal (`data/operations-portal-search.xls`)
 - Outputs: 401 Project Appraisal Documents saved in txt format, stored in `data/pad`. These documents are not included in the repository, as they are not for public use.
 - Run time: more than 2 hours, last I checked
