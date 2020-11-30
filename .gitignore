@@ -1,2 +1,3 @@
-data/*
+data/pad/*
+data/processed/pads.RDS
 __pycache__/*
