@@ -1,14 +1,43 @@
- 
+# This code process the data obtained from scraping the WB docs portal and saves the datasets that are relevant
+# for the different pieces of analysis. Since the processing is slighlty time-consuming, we want to avoid
+# repeating the process everytime a new change is made to the analysis
+
+# 1. Settings ==================================================================================================
+
+library(tidyverse)
+library(readtext)
+library(RColorBrewer)
+library(expss)
+library(eulerr)
+
+github <- "C:/Users/wb501238/Documents/GitHub/operations-portal-scrape"
+path_dt <- file.path(github,"data")
+path_txt <- file.path(path_dt, "pad")
+
+
+theme_bar <-
+  theme_void() +
+  theme(axis.title.x = element_text())
+
+# 2. Load data =================================================================================================
+# Data was scraped from WB docs portal
+
+  # List of ag projects from operations portal
   projects <- read.csv(file.path(path_dt,
                               "ag-projects.csv"),
                     stringsAsFactors = FALSE)
 
+  # txt version of PAD, scraped from WB docs
   projects <- 
     projects %>%
     mutate(doc_id = paste0(id, ".txt"),
            path = file.path(path_txt, doc_id),
            pad = file.exists(path)) 
 
+
+# 3. Read PADs ===============================================================================================
+
+  # Projects with valid txt files
   txts <-
     projects %>%
     filter(pad == TRUE) %>%
@@ -16,7 +45,7 @@
     unlist %>%
     unname
   
-  
+  # Read PADs and mark occurrences of the expressions we're interested in
   pads <- 
     readtext(txts) %>%
     mutate(text = 
@@ -34,15 +63,32 @@
            ffs = str_detect(text, "farmer field school") | str_detect(text, "farmers field school"),
            fao = str_detect(text, "food and agriculture organization"))
   
+  # Save this dataset, as computation can take a while
+  saveRDS(pads,
+          file.path(path_dt, 
+                    "processed",
+                    "pads.RDS"))
+  
+  # Get a lighter version of the dataset
   light <-
     pads %>%
     select(-text)
   
+
+# 4. Save analysis datasets ===============================================================================
+
+  # 4.1 Constructed dataset: each row is one project, with the dummies for expression occurences ----------
   projects_constructed <-
     projects %>%
     left_join(light) %>%
     select(-c(doc_id, path))
   
+  saveRDS(projects_constructed,
+          file.path(path_dt, 
+                    "processed",
+                    "ag-projects-constructed.RDS"))
+  
+  # 4.2 Year-level dataset: each row is one year (FY of project approval) -------------------------------
   project_long <-
     projects_constructed %>%
     group_by(approvalfy) %>%
@@ -63,6 +109,7 @@
     mutate(pct = (count/pads)*100,
            expression = factor(expression))
   
+  # Label factors
   project_long$expression <-
     project_long$expression %>%
     fct_recode( "Agricultural extension" =	"ext",
@@ -74,6 +121,7 @@
                 "Commercialization" = "com",
                 "Contact farmer" = "contact" )
     
+  # Label variables
   project_long <-
     project_long %>%
     apply_labels(year = "Fiscal year when project was approved",
@@ -81,23 +129,27 @@
                  projects = "Number of projects listed in operations portal",
                  expression = "Component",
                  pct = "Percent of projects that mention component in PAD")
-
+  
+  # Save complete dataset
+  saveRDS(project_long,
+          file.path(path_dt, 
+                    "processed", 
+                    "ag-projects-summary.RDS"))
+  
+  # Save with only relevant years
   project_year <- 
     project_long %>%
     filter(year >= 1990,
            year <= 2020)
   
   saveRDS(project_year,
-          file.path(path_dt, "ag-projects-year-summary.RDS"))
+          file.path(path_dt, 
+                    "processed",
+                    "ag-projects-year-summary.RDS"))
   
-  saveRDS(projects_constructed,
-          file.path(path_dt, 
-                    "ag-projects-constructed.RDS"))
-  saveRDS(project_long,
-          file.path(path_dt, 
-                    "ag-projects-summary.RDS"))
-  saveRDS(pads,
-          file.path(path_dt, "pads.RDS"))
+
+
+  # 4.3 Region-level dataset: each row is one WB region =================================================
   
   projects_region <-
     projects_constructed %>%
@@ -110,7 +162,7 @@
               ffs = sum(ffs, na.rm = T),
               fao = sum(fao, na.rm = T),
               contact = sum(contact, na.rm = T)) %>%
-    pivot_longer(cols = c(ext, demo, ffs, fao, gender, climate, com, contact),
+    pivot_longer(cols = c(ext, demo, ffs, fao, contact),
                  values_to = "count",
                  names_to = "expression") %>%
     mutate(pct = (count/pads)*100,
@@ -118,6 +170,7 @@
     select(-pads) %>%
     filter(region != "Other")
   
+  # Label factor
   projects_region$expression <-
     projects_region$expression %>%
     fct_recode( "Agricultural extension" =	"ext",
@@ -126,15 +179,20 @@
                 "FAO" = "fao",
                 "Contact farmer" = "contact" )
   
+  # Label variables
   projects_region <-
     projects_region %>%
     apply_labels(expression = "Component",
                  pct = "Percent of projects that mention component in PAD")
   
   saveRDS(projects_region,
-          file.path(path_dt, "ag-projects-region-summary.RDS"))
+          file.path(path_dt, 
+                    "processed",
+                    "ag-projects-region-summary.RDS"))
   
   
+  # 4.3 Component value sumary: each row is one  component =======================================
+  # Show median and mean value of projects in period of interest
   
   projects_value <-
     projects_constructed %>%
@@ -151,6 +209,7 @@
     summarise(median = median(netcommitment, na.rm = T),
               total = sum(netcommitment, na.rm = T)) 
   
+  # Label factors
   projects_value$expression <-
     projects_value$expression %>%
     fct_recode( "Agricultural extension" =	"ext",
@@ -162,6 +221,7 @@
                 "Commercialization" = "com",
                 "Contact farmer" = "contact")
   
+  # Label variables
   projects_value <-
     projects_value %>%
     apply_labels(expression = "Component",
@@ -169,5 +229,7 @@
                  total = "Million USD")
   
   saveRDS(projects_value,
-          file.path(path_dt, "ag-projects-value-summary.RDS"))
+          file.path(path_dt, 
+                    "processed",
+                    "ag-projects-value-summary.RDS"))
   

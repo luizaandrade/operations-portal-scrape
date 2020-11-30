@@ -5,6 +5,7 @@ output: pdf_document
   
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
 ```
 
 ```{r, include = FALSE}
@@ -14,7 +15,8 @@ library(expss)
 library(eulerr)
 library(RColorBrewer)
 
-path_dt <- file.path("C:/Users/wb501238/WBG/Maria Ruth Jones - DIME Analytics/Operations portal scraping/data")
+github <- "C:/Users/wb501238/Documents/GitHub/operations-portal-scrape"
+path_dt <- file.path(github,"data", "processed")
 
 yearly <- readRDS(file.path(path_dt,"ag-projects-year-summary.RDS"))
 
